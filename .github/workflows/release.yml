@@ -50,4 +50,5 @@ jobs:
           projectPath: .
           args: ${{ runner.os == 'macOS' && '--target aarch64-apple-darwin' || '' }}
           releaseDraft: ${{ github.event_name == 'push' || inputs.tag != '' }}
-          tagName: ${{ inputs.tag }}
+          # tag push = 用 ref_name（v0.1.0）；手动 dispatch 可指定 tag 名
+          tagName: ${{ inputs.tag || github.ref_name }}

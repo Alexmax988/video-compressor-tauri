@@ -24,7 +24,6 @@ New-Item -ItemType Directory -Force -Path $bin, $work | Out-Null
 Write-Host "→ 下载 $FF_ASSET（BtbN win64-gpl 静态版，ffmpeg 9.0.2 系列）..."
 $url = "$BASE/$FF_ASSET"
 $zip = Join-Path $work $FF_ASSET
-[Net.ServicePointManager]::DefaultWebProxy = $Null  # 有些网络环境需绕系统代理；CI 上无影响
 $ProgressPreference = "SilentlyContinue"
 Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing -TimeoutSec 1800
 
