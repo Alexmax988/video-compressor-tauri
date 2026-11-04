@@ -45,7 +45,11 @@ Copy-Item $fp.FullName "$bin\ffprobe-$TRIPLE.exe"
 
 # 4) 验证编码器（静态 GPL 版必含 libx264/libx265/ffv1，缺一个即系个包唔啱）
 Write-Host "→ 验证编码器..."
-$enc = & "$bin\ffmpeg-$TRIPLE.exe" -hide_banner -encoders 2>&1
+# 注意：输出 join 成单字符串再用 -notmatch（逐行 array 语义不同：$arr -notmatch 係「挑唔到嘅行」，恒为真）
+$enc = (& "$bin\ffmpeg-$TRIPLE.exe" -hide_banner -encoders 2>&1) -join "`n"
+if ([string]::IsNullOrWhiteSpace($enc)) {
+    Die "ffmpeg -encoders 冇任何输出（ffmpeg.exe 执行失败？）"
+}
 foreach ($n in @("libx265", "libx264", "ffv1")) {
     if ($enc -notmatch [regex]::Escape($n)) {
         Die "ffmpeg 缺少 $n 编码器（唔系 BtbN 静态 GPL 版？停止）"
