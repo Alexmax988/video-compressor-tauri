@@ -32,6 +32,10 @@
   },
   "bundle": {
     "active": true,
+    "targets": [
+      "dmg",
+      "nsis"
+    ],
     "category": "Utility",
     "shortDescription": "便携视频处理箱（内置 ffmpeg）",
     "icon": [

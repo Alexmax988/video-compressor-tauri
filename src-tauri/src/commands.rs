@@ -5,9 +5,61 @@ use serde::Serialize;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
+
+// ── 冷启动 / 单例转发 argv 队列（Finder Quick Action 入口） ──
+/// 冷启动时 setup 把 argv 中嘅真实文件路径存呢度，前端 mount 后用 take_launch_files 取走。
+pub static PENDING_LAUNCH_FILES: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+pub fn pending() -> &'static Mutex<Vec<String>> {
+    PENDING_LAUNCH_FILES.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+/// 从完整 argv（含 argv[0]）中抽取真实存在嘅文件路径（排除 exe 本身同无意义参数）。
+/// 兼容 file:// URL 形式输入（Finder 服务输入可能带 URL 前缀 / percent-encoding）。
+pub fn files_from_args(argv: &[String]) -> Vec<String> {
+    argv.iter()
+        .skip(1)
+        .map(|a| normalize_path(a))
+        .filter(|p| std::path::Path::new(p).is_file())
+        .collect()
+}
+
+/// 去掉 file:// 前缀 + percent-decode（中文 / 空格等被 URL 转义嘅情况）。
+fn normalize_path(a: &str) -> String {
+    let s = a.strip_prefix("file://").unwrap_or(a);
+    let bytes = s.as_bytes();
+    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let (Some(h), Some(l)) = (hexval(bytes[i + 1]), hexval(bytes[i + 2])) {
+                out.push(h * 16 + l);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+fn hexval(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
+    }
+}
+
+/// 前端 mount 时取走冷启动 pending 文件（取一次即清空，唔会重复入队）。
+#[tauri::command]
+pub fn take_launch_files() -> Vec<String> {
+    pending().lock().unwrap().drain(..).collect()
+}
 
 static ID_COUNTER: OnceLock<AtomicU64> = OnceLock::new();
 fn next_id() -> u64 {

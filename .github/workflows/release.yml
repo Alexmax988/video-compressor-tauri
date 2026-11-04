@@ -1,0 +1,53 @@
+# 双平台打包：tag v* 触发（亦可以手动 dispatch），Mac 出 .dmg、Windows 出 NSIS .exe，
+# 产物自动挂 draft Release。ffmpeg sidecar 各 runner 本地固定版下载，二进制唔入仓。
+# 注意：本期未做签名/公证 —— Mac 首次打开要右键「打开」，Windows 有 SmartScreen 提示（README 有写）。
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag（留空 = 唔挂 Release，只 build）"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch ffmpeg sidecar (macOS arm64 · martin-riedl 固定版)
+        if: runner.os == 'macOS'
+        run: bash scripts/fetch-ffmpeg
+
+      - name: Fetch ffmpeg sidecar (Windows x64 · BtbN 固定版)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\scripts\fetch-ffmpeg-windows.ps1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and draft release
+        uses: tauri-apps/tauri-action@v1
+        with:
+          projectPath: .
+          args: ${{ runner.os == 'macOS' && '--target aarch64-apple-darwin' || '' }}
+          releaseDraft: ${{ github.event_name == 'push' || inputs.tag != '' }}
+          tagName: ${{ inputs.tag }}

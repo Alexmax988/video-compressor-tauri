@@ -114,7 +114,16 @@ impl JobManager {
 }
 
 // ── 工具解析（派单：sidecar 优先 → 系统 homebrew 兜底，日志注明用咗边个） ──
+#[cfg(target_os = "windows")]
+const TRIPLE: &str = "x86_64-pc-windows-msvc";
+#[cfg(not(target_os = "windows"))]
 const TRIPLE: &str = "aarch64-apple-darwin";
+
+/// Windows 上 sidecar 名带 .exe 后缀（tauri 命名规则）；其他平台无后缀。
+#[cfg(target_os = "windows")]
+const BIN_SUFFIX: &str = ".exe";
+#[cfg(not(target_os = "windows"))]
+const BIN_SUFFIX: &str = "";
 
 /// 找 sidecar 二进制：dev（cargo run / tauri dev）tauri-build 会喺 exe 同目录放
 /// 无 triple 名（target/debug/ffmpeg）；release bundle 喺 exe / Resources 放
@@ -123,12 +132,13 @@ fn find_tool(app: &AppHandle, base: &str) -> Option<PathBuf> {
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            candidates.push(dir.join(format!("{base}-{TRIPLE}")));
+            candidates.push(dir.join(format!("{base}-{TRIPLE}{BIN_SUFFIX}")));
+            candidates.push(dir.join(format!("{base}{BIN_SUFFIX}")));
             candidates.push(dir.join(base));
         }
     }
     if let Ok(res) = app.path().resource_dir() {
-        candidates.push(res.join(format!("{base}-{TRIPLE}")));
+        candidates.push(res.join(format!("{base}-{TRIPLE}{BIN_SUFFIX}")));
         candidates.push(res.join(base));
     }
     candidates.into_iter().find(|p| p.is_file())
@@ -136,8 +146,18 @@ fn find_tool(app: &AppHandle, base: &str) -> Option<PathBuf> {
 
 pub fn resolve(app: &AppHandle) -> Result<engine::Tools, String> {
     if let (Some(ff), Some(pp)) = (find_tool(app, "ffmpeg"), find_tool(app, "ffprobe")) {
+        #[cfg(target_os = "windows")]
+        let desc = format!(
+            "内置 sidecar BtbN 静态版（{}）",
+            ff.display()
+        );
+        #[cfg(not(target_os = "windows"))]
+        let desc = format!(
+            "内置 sidecar martin-riedl 静态版 9.0.2（{}）",
+            ff.display()
+        );
         return Ok(engine::Tools {
-            source_desc: format!("内置 sidecar martin-riedl 静态版 9.0.2（{}）", ff.display()),
+            source_desc: desc,
             ffmpeg: ff,
             ffprobe: pp,
         });

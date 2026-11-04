@@ -115,6 +115,11 @@ export async function addFiles(paths: string[]): Promise<AddFilesResult> {
   return invoke<AddFilesResult>("add_files", { paths });
 }
 
+/// 冷启动 argv 文件路径（Finder Quick Action / 命令行启动）；Rust setup 写 pending，取一次即清空。
+export async function takeLaunchFiles(): Promise<string[]> {
+  return invoke<string[]>("take_launch_files");
+}
+
 export async function startJobs(
   feature: Feature,
   params: Params,

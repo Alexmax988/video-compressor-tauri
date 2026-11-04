@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import { Channel } from "@tauri-apps/api/core";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -19,6 +20,7 @@ import {
   previewFrame,
   startJobs,
   stamp,
+  takeLaunchFiles,
   verifyLossless,
   mediaInfo,
   type ProbeInfo,
@@ -139,6 +141,30 @@ export default function App() {
     },
     [log, selectedId],
   );
+
+  const doAddFilesRef = useRef(doAddFiles);
+  doAddFilesRef.current = doAddFiles;
+
+  // ── 启动参数文件入队（Finder Quick Action 入口，第二期） ──
+  // 冷启动：Rust setup 把 argv 文件存 PENDING_LAUNCH_FILES → mount 时 takeLaunchFiles 取走；
+  // App 已运行：单例插件把二进程 argv 转发为 vct://pending-files 事件 → 直接入队。
+  // doAddFiles 已按 path 去重，重复触发唔会出双行。
+  useEffect(() => {
+    let un: (() => void) | undefined;
+    takeLaunchFiles()
+      .then((files) => {
+        if (files.length) doAddFilesRef.current(files);
+      })
+      .catch(() => {});
+    listen<string[]>("vct://pending-files", (ev) => {
+      const files = ev.payload;
+      if (files?.length) doAddFilesRef.current(files);
+    })
+      .then((fn) => (un = fn))
+      .catch(() => {});
+    return () => un?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── 压到指定大小：码率预估（标注估算） ──
   useEffect(() => {
