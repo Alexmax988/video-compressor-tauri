@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# fetch-ffmpeg — 固定版本下载 martin-riedl 静态 ffmpeg/ffprobe + SHA-256 校验 + libx265 验证
+# 派单：静态构建来源 Mac arm64 用 martin-riedl.de（有 libx264/x265）；Homebrew 那个是动态链接，不准打包。
+set -euo pipefail
+
+FFMPEG_VERSION="9.0.2"
+FFMPEG_BUILD_ID="1789931890_9.0.2"   # 2026-09-20 构建
+BASE="https://ffmpeg.martin-riedl.de/download/macos/arm64/${FFMPEG_BUILD_ID}"
+FF_SHA="c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b094492d924"
+FP_SHA="fcbe839537485eaee7a7a8bc5cbc0f90d53617e80943e8a5b2e31cb851197ea6"
+TRIPLE="aarch64-apple-darwin"
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+BIN="$ROOT/src-tauri/binaries"
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+
+die() { echo "❌ $*" >&2; exit 1; }
+
+mkdir -p "$BIN"
+echo "→ 下载 ffmpeg-${FFMPEG_VERSION} (macOS arm64, martin-riedl 静态版)..."
+curl -fL --max-time 600 -o "$WORK/ffmpeg.zip" "$BASE/ffmpeg.zip"
+curl -fL --max-time 600 -o "$WORK/ffprobe.zip" "$BASE/ffprobe.zip"
+
+# 1) SHA-256 校验（官方 sidecar 或固定值）
+echo "→ 校验 SHA-256..."
+echo "$FF_SHA  $WORK/ffmpeg.zip" | shasum -a 256 -c - || die "ffmpeg.zip SHA-256 不匹配"
+echo "$FP_SHA  $WORK/ffprobe.zip" | shasum -a 256 -c - || die "ffprobe.zip SHA-256 不匹配"
+
+# 2) 解壓 + 擺入 sidecar 命名（target triple 后缀）
+echo "→ 解壓..."
+unzip -oq "$WORK/ffmpeg.zip" -d "$WORK/ff"
+unzip -oq "$WORK/ffprobe.zip" -d "$WORK/fp"
+FF="$(find "$WORK/ff" -name ffmpeg -type f | head -1)"
+FP="$(find "$WORK/fp" -name ffprobe -type f | head -1)"
+[ -n "$FF" ] || die "ffmpeg.zip 解壓後搵唔到 ffmpeg 可执行文件"
+[ -n "$FP" ] || die "ffprobe.zip 解壓後搵唔到 ffprobe 可执行文件"
+cp "$FF" "$BIN/ffmpeg-${TRIPLE}"
+cp "$FP" "$BIN/ffprobe-${TRIPLE}"
+chmod +x "$BIN/ffmpeg-${TRIPLE}" "$BIN/ffprobe-${TRIPLE}"
+
+# 3) 验证 -encoders 有 libx265（静态版关键要求）
+echo "→ 验证编码器..."
+ENC="$("$BIN/ffmpeg-${TRIPLE}" -hide_banner -encoders 2>/dev/null)"
+echo "$ENC" | grep -q "libx265" || die "ffmpeg 缺少 libx265 编码器（唔系 martin-riedl 静态版？）"
+echo "$ENC" | grep -q "libx264" || die "ffmpeg 缺少 libx264 编码器"
+echo "$ENC" | grep -q "ffv1" || die "ffmpeg 缺少 ffv1 编码器"
+
+# 4) 版本确认
+"$BIN/ffmpeg-${TRIPLE}" -version 2>&1 | head -1
+"$BIN/ffprobe-${TRIPLE}" -version 2>&1 | head -1
+
+echo "✅ 完成：$BIN/ffmpeg-${TRIPLE} 与 ffprobe-${TRIPLE}（${FFMPEG_VERSION}，含 libx264/libx265/ffv1）"

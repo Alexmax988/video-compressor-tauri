@@ -1,0 +1,37 @@
+[package]
+name = "video-compressor-tauri"
+version = "1.0.0"
+description = "便携视频处理箱（Tauri 2 重砌版）"
+authors = ["lele"]
+edition = "2021"
+default-run = "video-compressor-tauri"
+
+[lib]
+name = "vct_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+# dev 冒烟 CLI：默认 build 唔出呢个 bin（避免入 .app bundle）
+# 冒烟用法：cargo build --features vct-cli --bin vct-cli
+[[bin]]
+name = "vct-cli"
+path = "src/bin/vct-cli.rs"
+required-features = ["vct-cli"]
+
+[features]
+vct-cli = []
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2.12", features = ["protocol-asset"] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true
+panic = "abort"

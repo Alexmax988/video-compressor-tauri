@@ -1,0 +1,581 @@
+/* 设计 tokens：一份 CSS 变量；深浅色跟随系统；字体三级（13 半粗文件名 / 11 次级 / 20 大读数）；强调色单色 */
+:root {
+  color-scheme: light dark;
+
+  /* 语义色（跟随系统明暗） */
+  --bg: light-dark(#f4f4f5, #141416);
+  --panel: light-dark(#ffffff, #1e1e21);
+  --panel-2: light-dark(#fafafa, #232327);
+  --inset: light-dark(#f0f0f2, #18181b);
+  --border: light-dark(#e3e3e6, #32323a);
+  --border-strong: light-dark(#cfced4, #45454f);
+  --text: light-dark(#1b1b1f, #f2f2f5);
+  --text-2: light-dark(#6e6e76, #a2a2ac);
+  --text-3: light-dark(#9a9aa2, #6c6c74);
+  --accent: light-dark(#2f6fed, #5b8cff); /* 单色强调（无渐变） */
+  --accent-soft: light-dark(#2f6fed1f, #5b8cff26);
+  --ok: #22a06b;
+  --warn: #d97b12;
+  --danger: #e5484d;
+  --chip: light-dark(#eceef2, #2a2a30);
+
+  /* 字体三级 */
+  --f-name: 600 13px/1.4 system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --f-sub: 400 11px/1.5 system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --f-big: 700 20px/1.2 system-ui, -apple-system, "PingFang SC", sans-serif;
+  --f-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --r-card: 10px;
+  --r-row: 8px;
+  --r-capsule: 999px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font: var(--f-sub);
+  color: var(--text);
+  background: var(--bg);
+  user-select: none;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr) 320px;
+  height: 100%;
+  background: var(--bg);
+}
+
+/* ── 左：功能栏 232px ── */
+.left {
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.group-label {
+  font: 700 10px/1.4 system-ui;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  text-transform: uppercase;
+  padding: 2px 4px;
+}
+
+.feat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  font: 400 12.5px/1.4 system-ui, "PingFang SC", sans-serif;
+  color: var(--text);
+  border: 1px solid transparent;
+}
+.feat-row:hover {
+  background: var(--inset);
+}
+.feat-row.on {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.feat-row .ico {
+  width: 16px;
+  display: inline-flex;
+  font-size: 13px;
+}
+
+/* 参数区 */
+.params {
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--panel-2);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.params .p-title {
+  font: var(--f-name);
+  margin: 0;
+}
+.params .p-desc {
+  margin: 0;
+  color: var(--text-2);
+  font: var(--f-sub);
+}
+.param-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.param-row label {
+  color: var(--text-2);
+  font: var(--f-sub);
+}
+input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+  min-width: 90px;
+}
+input[type="text"],
+select {
+  font: var(--f-sub);
+  color: var(--text);
+  background: var(--inset);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 3px 6px;
+  outline: none;
+}
+input[type="text"]:focus,
+select:focus {
+  border-color: var(--accent);
+}
+.readout {
+  font: 700 12px/1.4 var(--f-mono);
+  color: var(--accent);
+  min-width: 64px;
+  text-align: right;
+}
+.chip {
+  font: var(--f-sub);
+  border: 1px solid var(--border-strong);
+  background: var(--chip);
+  color: var(--text);
+  border-radius: var(--r-capsule);
+  padding: 2px 10px;
+  cursor: pointer;
+}
+.chip.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.est {
+  color: var(--text-2);
+  font: var(--f-sub);
+  border-left: 2px solid var(--accent);
+  padding-left: 6px;
+}
+.est em {
+  font-style: normal;
+  color: var(--text-3);
+}
+
+/* 输出位置 */
+.outbox {
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--panel-2);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.outbox .row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: var(--f-sub);
+}
+.outbox .row path {
+  color: var(--text-3);
+  word-break: break-all;
+}
+button.btn {
+  font: 500 12px/1.4 system-ui, "PingFang SC", sans-serif;
+  border-radius: 7px;
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  color: var(--text);
+  padding: 6px 12px;
+  cursor: pointer;
+}
+button.btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+button.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+button.btn.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+button.btn.danger {
+  border-color: color-mix(in srgb, var(--danger) 50%, transparent);
+  color: var(--danger);
+}
+button.btn.ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-2);
+  padding: 4px 10px;
+}
+button.btn.ghost:hover:not(:disabled) {
+  background: var(--inset);
+  color: var(--text);
+}
+button.btn.ghost:disabled {
+  color: var(--text-3);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── 中：队列 ── */
+.center {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 12px;
+  gap: 10px;
+}
+.center-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.center-head .title {
+  font: 700 15px/1.3 system-ui, "PingFang SC", sans-serif;
+  flex: 1;
+}
+
+/* 总进度卡（转换期间显示） */
+.progress-card {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: var(--r-card);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.progress-card .big {
+  font: var(--f-big);
+  color: var(--accent);
+  min-width: 56px;
+  font-variant-numeric: tabular-nums;
+}
+.progress-card .bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--inset);
+  overflow: hidden;
+}
+.bar > i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.15s ease;
+}
+.progress-card .stage {
+  color: var(--text-2);
+  font: var(--f-sub);
+  white-space: nowrap;
+}
+
+/* 拖放提示 */
+.drop-hint {
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--r-card);
+  padding: 10px 12px;
+  color: var(--text-2);
+  font: var(--f-sub);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.drop-hint.hot {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.drop-hint .spacer {
+  flex: 1;
+}
+
+/* 队列行 */
+.queue {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: var(--r-card);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  min-height: 150px;
+}
+.queue .empty {
+  margin: auto;
+  color: var(--text-3);
+  font: var(--f-sub);
+}
+.row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto 24px;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: var(--r-row);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.row:hover {
+  background: var(--inset);
+}
+.row.sel {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+/* 行尾删除掣（补充规格：每行要有删除掣） */
+.row .del {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-3);
+  font: 400 16px/22px system-ui, "PingFang SC", sans-serif;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+.row:hover .del {
+  opacity: 0.9;
+}
+.row .del:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
+  color: var(--danger);
+  opacity: 1;
+}
+.row .del:disabled {
+  cursor: not-allowed;
+  opacity: 0.15;
+}
+.row .thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  background: var(--inset);
+  object-fit: cover;
+  display: block;
+}
+.row .thumb.ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--text-3);
+}
+.row .info {
+  min-width: 0;
+}
+.row .name {
+  font: var(--f-name);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row .sub {
+  color: var(--text-2);
+  font: var(--f-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row .sub.err {
+  color: var(--danger);
+}
+
+/* 行右侧：状态胶囊 + 大小 chip + 行底 bar */
+.row .right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 150px;
+}
+.capsule {
+  font: 500 10.5px/1.4 system-ui, "PingFang SC", sans-serif;
+  border-radius: var(--r-capsule);
+  padding: 2px 10px;
+  white-space: nowrap;
+  border: 1px solid var(--border-strong);
+  color: var(--text-2);
+  background: var(--chip);
+}
+.capsule.pending {
+  color: var(--text-2);
+}
+.capsule.running {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--accent-soft);
+}
+.capsule.done {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+}
+.capsule.nogain {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 50%, transparent);
+}
+.capsule.failed {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 50%, transparent);
+}
+.capsule.cancelled {
+  color: var(--text-3);
+}
+.size-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font: var(--f-sub);
+  color: var(--text-2);
+}
+.size-chip .arrow {
+  color: var(--text-3);
+}
+.size-chip .out {
+  color: var(--text);
+  font-weight: 600;
+}
+.size-chip .pct {
+  font: 700 10.5px/1 var(--f-mono);
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+/* 行底 bar（原/产物条形对比） */
+.rowbars {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rowbars i {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+}
+.rowbars .orig {
+  background: color-mix(in srgb, var(--text-2) 40%, transparent);
+}
+.rowbars .out {
+  background: var(--accent);
+}
+
+/* ── 右：检查器 320px ── */
+.right-panel {
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.right-panel h3 {
+  margin: 0;
+  font: 700 11px/1.4 system-ui;
+  color: var(--text-2);
+  letter-spacing: 0.04em;
+}
+.preview-box {
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--inset);
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.preview-box img {
+  max-width: 100%;
+  max-height: 240px;
+  display: block;
+}
+.preview-box .ph {
+  color: var(--text-3);
+  font: var(--f-sub);
+  padding: 24px;
+  text-align: center;
+}
+.info-box {
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--panel-2);
+  padding: 10px;
+  font: var(--f-sub);
+  color: var(--text-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.log-box {
+  flex: 1;
+  min-height: 120px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--inset);
+  padding: 8px 10px;
+  overflow-y: auto;
+  font: 10.5px/1.6 var(--f-mono);
+  color: var(--text-2);
+  user-select: text;
+}
+.log-box .l-ok {
+  color: var(--ok);
+}
+.log-box .l-err {
+  color: var(--danger);
+}
+.log-box .l-warn {
+  color: var(--warn);
+}
+.log-box .l-log {
+  color: var(--text-2);
+}
+
+/* 滚动条（macOS） */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
