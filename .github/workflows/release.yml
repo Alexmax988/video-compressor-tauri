@@ -1,5 +1,11 @@
 # 双平台打包：tag v* 触发（亦可以手动 dispatch），Mac 出 .dmg、Windows 出 NSIS .exe，
 # 产物自动挂 draft Release。ffmpeg sidecar 各 runner 本地固定版下载，二进制唔入仓。
+#
+# 结构说明（避坑记录）：
+# - prepare-release 先建/找 draft Release（幂等），两个 build job 用 releaseId 上传 → 冇双 job 竞态；
+# - tauri-action 需要 GITHUB_TOKEN 环境变量（v1 内部读 process.env.GITHUB_TOKEN），显式给 github.token；
+# - 手动 dispatch 唔填 tag = 只 build 唔挂 Release。
+#
 # 注意：本期未做签名/公证 —— Mac 首次打开要右键「打开」，Windows 有 SmartScreen 提示（README 有写）。
 name: release
 
@@ -15,8 +21,46 @@ on:
 permissions:
   contents: write
 
+env:
+  REPO: Alexmax988/video-compressor-tauri
+
 jobs:
+  prepare-release:
+    # 建/搵 draft Release（幂等：重跑同一 tag 会复用现有 draft）。无 tag 时 releaseId 留空 = 只 build。
+    runs-on: ubuntu-latest
+    outputs:
+      releaseId: ${{ steps.create.outputs.releaseId }}
+    steps:
+      - name: Create or find draft release
+        id: create
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+          IS_TAG_PUSH: ${{ github.event_name == 'push' }}
+        run: |
+          set -e
+          if [ "$IS_TAG_PUSH" != "true" ] && [ -z "$TAG" ]; then
+            echo "无 tag（手动 build-only dispatch）：唔建 Release"
+            exit 0
+          fi
+          api="https://api.github.com/repos/$REPO/releases"
+          existing=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$api?per_page=100" \
+            | jq -r --arg t "$TAG" '.[] | select(.tag_name==$t and .draft==true) | .id' | head -1 || true)
+          if [ -n "$existing" ]; then
+            echo "已有 draft Release $existing（tag $TAG），复用"
+            echo "releaseId=$existing" >> "$GITHUB_OUTPUT"
+          else
+            resp=$(curl -s -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"tag_name\":\"$TAG\",\"name\":\"$TAG\",\"draft\":true}" "$api")
+            id=$(echo "$resp" | jq -r '.id')
+            [ -n "$id" ] && [ "$id" != "null" ] || { echo "❌ 创建 draft Release 失败：$resp"; exit 1; }
+            echo "已创建 draft Release $id（tag $TAG）"
+            echo "releaseId=$id" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: prepare-release
     strategy:
       fail-fast: false
       matrix:
@@ -44,11 +88,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build and draft release
+      - name: Build and upload to draft release
         uses: tauri-apps/tauri-action@v1
+        env:
+          # tauri-action v1 内部读 process.env.GITHUB_TOKEN（无此 env 即报 "GITHUB_TOKEN is required"）
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           projectPath: .
           args: ${{ runner.os == 'macOS' && '--target aarch64-apple-darwin' || '' }}
-          releaseDraft: ${{ github.event_name == 'push' || inputs.tag != '' }}
-          # tag push = 用 ref_name（v0.1.0）；手动 dispatch 可指定 tag 名
-          tagName: ${{ inputs.tag || github.ref_name }}
+          releaseId: ${{ needs.prepare-release.outputs.releaseId }}
