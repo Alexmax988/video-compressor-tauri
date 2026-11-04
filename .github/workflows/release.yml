@@ -97,3 +97,5 @@ jobs:
           projectPath: .
           args: ${{ runner.os == 'macOS' && '--target aarch64-apple-darwin' || '' }}
           releaseId: ${{ needs.prepare-release.outputs.releaseId }}
+          # GitHub API 会吞掉 asset 名里的 CJK 字符（label 保得住）；统一用 ASCII 名
+          releaseAssetNamePattern: "[mainBinaryName]-[version]-[platform]-[arch].[ext]"
