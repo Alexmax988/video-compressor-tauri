@@ -213,6 +213,26 @@ fn make_thumb(
     None
 }
 
+// ── 调试日志（正式功能）：前端崩溃诊断 / error boundary 写本地 vct-debug.log ──
+#[tauri::command]
+pub fn debug_log(app: AppHandle, line: String) -> Result<(), String> {
+    use std::fs::OpenOptions;
+    use std::io::Write;
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join("vct-debug.log");
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default();
+    let mut f = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|e| e.to_string())?;
+    let _ = writeln!(f, "[{} ms] {}", ts.as_millis(), line);
+    Ok(())
+}
+
 // ── 开始 / 取消 ──
 #[tauri::command]
 pub fn start_jobs(

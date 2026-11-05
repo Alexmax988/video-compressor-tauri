@@ -35,6 +35,8 @@ pub struct StartJobsReq {
 
 #[derive(Serialize, Clone)]
 #[serde(tag = "k", rename_all = "camelCase")]
+// 注意：enum 级 rename_all 只改 variant 名（tag 值），variant 内多词字段
+// 不会跟着改，必须逐字段 rename，否则前端收到 snake_case（黑屏事故根因）。
 pub enum Msg {
     Log {
         text: String,
@@ -43,6 +45,7 @@ pub enum Msg {
         job: usize,
         label: String,
         total: usize,
+        #[serde(rename = "itemIds")]
         item_ids: Vec<u64>,
     },
     Progress {
@@ -55,21 +58,30 @@ pub enum Msg {
         label: String,
         ok: bool,
         detail: String,
+        #[serde(rename = "outPath")]
         out_path: Option<String>,
+        #[serde(rename = "outSize")]
         out_size: Option<i64>,
+        #[serde(rename = "frameCount")]
         frame_count: Option<u64>,
         duration: Option<f64>,
+        #[serde(rename = "itemIds")]
         item_ids: Vec<u64>,
+        #[serde(rename = "noGain")]
         no_gain: bool,
     },
     JobCancelled {
         job: usize,
         label: String,
+        #[serde(rename = "itemIds")]
         item_ids: Vec<u64>,
     },
     AllDone {
+        #[serde(rename = "okCount")]
         ok_count: usize,
+        #[serde(rename = "failCount")]
         fail_count: usize,
+        #[serde(rename = "cancelledCount")]
         cancelled_count: usize,
     },
 }
@@ -647,5 +659,60 @@ fn delete_partial(plan: &engine::Plan) {
         let _ = std::fs::remove_dir_all(&plan.out);
     } else {
         let _ = std::fs::remove_file(&plan.out);
+    }
+}
+
+#[cfg(test)]
+mod msg_serde_shape {
+    use super::*;
+
+    // 黑屏根因回归测试（2026-11-05）：Msg variant 字段必须序列化成 camelCase，
+    // 与前端 Msg 类型一致。enum 级 rename_all 不改 variant 内字段名，
+    // 漏一个字段前端就是 undefined → jobStarted 时 TypeError → React 整树卸载黑屏。
+    #[test]
+    fn msg_fields_are_camel_case() {
+        let j = serde_json::to_string(&Msg::JobStarted {
+            job: 0,
+            label: "FFV1".into(),
+            total: 1,
+            item_ids: vec![2],
+        })
+        .unwrap();
+        assert!(j.contains("\"itemIds\":[2]"), "itemIds 缺失: {j}");
+
+        let j = serde_json::to_string(&Msg::JobDone {
+            job: 0,
+            label: "FFV1".into(),
+            ok: true,
+            detail: String::new(),
+            out_path: Some("/x".into()),
+            out_size: Some(1),
+            frame_count: Some(2),
+            duration: Some(3.0),
+            item_ids: vec![2],
+            no_gain: false,
+        })
+        .unwrap();
+        for key in ["\"outPath\"", "\"outSize\"", "\"frameCount\"", "\"itemIds\"", "\"noGain\""] {
+            assert!(j.contains(key), "{key} 缺失: {j}");
+        }
+
+        let j = serde_json::to_string(&Msg::JobCancelled {
+            job: 0,
+            label: "FFV1".into(),
+            item_ids: vec![2],
+        })
+        .unwrap();
+        assert!(j.contains("\"itemIds\""), "itemIds 缺失: {j}");
+
+        let j = serde_json::to_string(&Msg::AllDone {
+            ok_count: 1,
+            fail_count: 0,
+            cancelled_count: 0,
+        })
+        .unwrap();
+        for key in ["\"okCount\"", "\"failCount\"", "\"cancelledCount\""] {
+            assert!(j.contains(key), "{key} 缺失: {j}");
+        }
     }
 }

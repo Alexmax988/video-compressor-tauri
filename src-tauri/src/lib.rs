@@ -54,7 +54,8 @@ pub fn run() {
             commands::probe_info,
             commands::ffmpeg_info,
             commands::preview_frame,
-            commands::take_launch_files
+            commands::take_launch_files,
+            commands::debug_log // 崩溃诊断日志（前端 error boundary / 全局异常写本地 vct-debug.log）
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
