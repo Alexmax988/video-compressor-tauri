@@ -128,7 +128,7 @@ export async function startJobs(
   items: { id: number; path: string; kind: string }[],
   channel: Channel<Msg>,
 ): Promise<void> {
-  await invoke("start_jobs", { feature, params, outMode, outFolder, items, channel });
+  await invoke("start_jobs", { req: { feature, params, outMode, outFolder, items }, channel });
 }
 
 export async function cancelAll(): Promise<void> {
